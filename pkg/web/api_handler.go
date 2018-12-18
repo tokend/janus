@@ -97,14 +97,14 @@ func (c *APIHandler) PutBy() http.HandlerFunc {
 
 		// avoid situation when trying to update existing definition with new path
 		// that is already registered with another name
-	/*	_, span = trace.StartSpan(r.Context(), "repo.FindByListenPath")
-		existingCfg := c.findByListenPath(cfg.Proxy.ListenPath)
-		span.End()
+		/*	_, span = trace.StartSpan(r.Context(), "repo.FindByListenPath")
+			existingCfg := c.findByListenPath(cfg.Proxy.ListenPath)
+			span.End()
 
-		if existingCfg != nil && existingCfg.Name != cfg.Name {
-			errors.Handler(w, api.ErrAPIListenPathExists)
-			return
-		}*/
+			if existingCfg != nil && existingCfg.Name != cfg.Name {
+				errors.Handler(w, api.ErrAPIListenPathExists)
+				return
+			}*/
 
 		_, span = trace.StartSpan(r.Context(), "repo.Update")
 		c.configurationChan <- api.ConfigurationMessage{
@@ -192,9 +192,9 @@ func (c *APIHandler) exists(cfg *api.Definition) (bool, error) {
 			return true, api.ErrAPINameExists
 		}
 
-/*		if storedCfg.Proxy.ListenPath == cfg.Proxy.ListenPath {
-			return true, api.ErrAPIListenPathExists
-		}*/
+		/*		if storedCfg.Proxy.ListenPath == cfg.Proxy.ListenPath {
+				return true, api.ErrAPIListenPathExists
+			}*/
 	}
 
 	return false, nil
