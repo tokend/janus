@@ -18,5 +18,5 @@ build:
     - tokend
   script:
     - docker login -u $CI_REGISTRY_USER -p $CI_BUILD_TOKEN $CI_REGISTRY
-    - docker build -t $GL_IMAGE .
-    - docker push $GL_IMAGE
+    - docker build -t $GL_IMAGE_NAME .
+    - docker push $GL_IMAGE_NAME
