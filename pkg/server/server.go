@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -35,6 +36,7 @@ type Server struct {
 	webServer             *web.Server
 	profilingEnabled      bool
 	profilingPublic       bool
+	currentTargets        currentTargets
 }
 
 // New creates a new instance of Server
@@ -42,6 +44,7 @@ func New(opts ...Option) *Server {
 	s := Server{
 		configurationChan: make(chan api.ConfigurationChanged, 100),
 		stopChan:          make(chan struct{}, 1),
+		currentTargets:    currentTargets{Targets: make(map[string]*targetsEvent)},
 	}
 
 	for _, opt := range opts {
@@ -49,6 +52,11 @@ func New(opts ...Option) *Server {
 	}
 
 	return &s
+}
+
+type currentTargets struct {
+	sync.Mutex
+	Targets map[string]*targetsEvent
 }
 
 // Start starts the server
@@ -116,6 +124,13 @@ func (s *Server) StartWithContext(ctx context.Context) error {
 	s.apiLoader.RegisterAPIs(definitions)
 
 	log.Info("Janus started")
+
+	go func() {
+		for {
+			s.refreshTargets()
+			time.Sleep(s.globalConfig.TargetsChecker.SleepPeriod)
+		}
+	}()
 
 	return nil
 }
@@ -318,6 +333,8 @@ func (s *Server) updateConfigurations(cfg api.ConfigurationMessage) {
 	}
 
 	s.currentConfigurations.Definitions = currentDefinitions
+	// update currentTargets with all kinds of definitions updates
+	s.updateTargets()
 }
 
 func (s *Server) handleEvent(cfg *api.Configuration) {
@@ -331,4 +348,90 @@ func (s *Server) handleEvent(cfg *api.Configuration) {
 
 	s.server.Handler = newRouter
 	log.Debug("Configuration refresh done")
+}
+
+type targetsEvent struct {
+	Targets  []*proxy.Target
+	Attempts int
+	Weight   int
+}
+
+func (s *Server) refreshTargets() {
+	s.currentTargets.Lock()
+	defer s.currentTargets.Unlock()
+
+	// check health for all targets in currentTargets and change weights if needed
+	for url, event := range s.currentTargets.Targets {
+		resp, err := doStatusRequest(url, true)
+		if err != nil || resp.StatusCode >= http.StatusInternalServerError {
+			event.Weight = 0
+			event.Attempts++
+			for _, target := range event.Targets {
+				target.Weight = 0
+			}
+
+			// if target weight were zero for too long - delete from all definitions
+			if event.Attempts >= s.globalConfig.TargetsChecker.Attempts {
+				log.Info(fmt.Sprintf("target %s removed after %d attempts", url, s.globalConfig.TargetsChecker.Attempts))
+				s.removeFromDefs(url)
+				delete(s.currentTargets.Targets, url)
+			}
+
+			log.Info(fmt.Sprintf("unhealthy target %s after %d attempts", url, event.Attempts))
+			continue
+		}
+
+		// if target working again - refresh weights
+		if event.Weight <= 0 {
+			for _, target := range event.Targets {
+				target.Weight = 10
+			}
+			event.Weight = 10
+			event.Attempts = 0
+		}
+	}
+}
+
+func doStatusRequest(target string, closeBody bool) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodGet, target, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return resp, err
+	}
+
+	if closeBody {
+		defer resp.Body.Close()
+	}
+
+	return resp, err
+}
+
+func (s *Server) removeFromDefs(targetURL string) {
+	for _, def := range s.currentConfigurations.Definitions {
+		for i, target := range def.Proxy.Upstreams.Targets {
+			if target.Target == targetURL {
+				def.Proxy.Upstreams.Targets = append(def.Proxy.Upstreams.Targets[:i], def.Proxy.Upstreams.Targets[i+1:]...)
+			}
+		}
+	}
+}
+
+func (s *Server) updateTargets() {
+	s.currentTargets.Lock()
+	defer s.currentTargets.Unlock()
+
+	s.currentTargets.Targets = make(map[string]*targetsEvent)
+	for _, def := range s.currentConfigurations.Definitions {
+		for _, trg := range def.Proxy.Upstreams.Targets {
+			if _, ok := s.currentTargets.Targets[trg.Target]; !ok {
+				s.currentTargets.Targets[trg.Target] = &targetsEvent{}
+			}
+			s.currentTargets.Targets[trg.Target].Targets = append(s.currentTargets.Targets[trg.Target].Targets, trg)
+			s.currentTargets.Targets[trg.Target].Weight = trg.Weight
+		}
+	}
 }
