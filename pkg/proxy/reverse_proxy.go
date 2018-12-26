@@ -5,16 +5,20 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/go-chi/chi"
 	"github.com/hellofresh/janus/pkg/middleware"
+	obs "github.com/hellofresh/janus/pkg/observability"
 	"github.com/hellofresh/janus/pkg/proxy/balancer"
 	"github.com/hellofresh/janus/pkg/router"
 	"github.com/hellofresh/stats-go/bucket"
 	"github.com/hellofresh/stats-go/client"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"go.opencensus.io/tag"
+	"go.opencensus.io/trace"
 )
 
 const (
@@ -102,8 +106,37 @@ func createDirector(proxyDefinition *Definition, balancer balancer.Balancer, sta
 			"upstream-host":    req.URL.Host,
 			"upstream-request": req.URL.RequestURI(),
 		}).Info("Proxying request to the following upstream")
+
 		statsClient.TrackMetric(statsSection, bucket.MetricOperation{req.Host})
+
+		// Add additional trace attributes
+		addTraceAttributes(req)
+
+		// Insert additional tags
+		ctx, _ := tag.New(req.Context(), tag.Insert(obs.KeyUpstreamPath, upstream.Target))
+		*req = *req.WithContext(ctx)
 	}
+}
+
+func addTraceAttributes(req *http.Request) {
+	ctx := req.Context()
+	span := trace.FromContext(ctx)
+	if span == nil {
+		return
+	}
+
+	host, err := os.Hostname()
+	if host == "" || err != nil {
+		log.WithError(err).Debug("Failed to get host name")
+		host = "unknown"
+	}
+
+	span.AddAttributes(
+		trace.StringAttribute("http.host", host),
+		trace.StringAttribute("http.referrer", req.Referer()),
+		trace.StringAttribute("http.remote_address", req.RemoteAddr),
+		trace.StringAttribute("request.id", middleware.RequestIDFromContext(ctx)),
+	)
 }
 
 func applyParameters(req *http.Request, path string, paramNames []string) (string, error) {
