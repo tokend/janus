@@ -97,14 +97,14 @@ func (c *APIHandler) PutBy() http.HandlerFunc {
 
 		// avoid situation when trying to update existing definition with new path
 		// that is already registered with another name
-		span = opentracing.FromContext(r.Context(), "datastore.FindByListenPath")
+		/*span = opentracing.FromContext(r.Context(), "datastore.FindByListenPath")
 		existingCfg := c.findByListenPath(cfg.Proxy.ListenPath)
 		span.Finish()
 
 		if existingCfg != nil && existingCfg.Name != cfg.Name {
 			errors.Handler(w, api.ErrAPIListenPathExists)
 			return
-		}
+		}*/
 
 		span = opentracing.FromContext(r.Context(), "datastore.Update")
 		c.configurationChan <- api.ConfigurationMessage{
@@ -192,9 +192,9 @@ func (c *APIHandler) exists(cfg *api.Definition) (bool, error) {
 			return true, api.ErrAPINameExists
 		}
 
-		if storedCfg.Proxy.ListenPath == cfg.Proxy.ListenPath {
+		/*if storedCfg.Proxy.ListenPath == cfg.Proxy.ListenPath {
 			return true, api.ErrAPIListenPathExists
-		}
+		}*/
 	}
 
 	return false, nil
