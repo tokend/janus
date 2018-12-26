@@ -97,7 +97,7 @@ func (c *APIHandler) PutBy() http.HandlerFunc {
 
 		// avoid situation when trying to update existing definition with new path
 		// that is already registered with another name
-		/*span = opentracing.FromContext(r.Context(), "datastore.FindByListenPath")
+	/*	_, span = trace.StartSpan(r.Context(), "repo.FindByListenPath")
 		existingCfg := c.findByListenPath(cfg.Proxy.ListenPath)
 		span.End()
 
@@ -192,7 +192,7 @@ func (c *APIHandler) exists(cfg *api.Definition) (bool, error) {
 			return true, api.ErrAPINameExists
 		}
 
-		/*if storedCfg.Proxy.ListenPath == cfg.Proxy.ListenPath {
+/*		if storedCfg.Proxy.ListenPath == cfg.Proxy.ListenPath {
 			return true, api.ErrAPIListenPathExists
 		}*/
 	}
