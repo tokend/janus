@@ -18,6 +18,7 @@ type Specification struct {
 	BackendFlushInterval time.Duration `envconfig:"BACKEND_FLUSH_INTERVAL"`
 	IdleConnTimeout      time.Duration `envconfig:"IDLE_CONN_TIMEOUT"`
 	RequestID            bool          `envconfig:"REQUEST_ID_ENABLED"`
+	TargetsChecker       TargetsChecker
 	Log                  logging.LogConfig
 	Web                  Web
 	Database             Database
@@ -119,6 +120,12 @@ type JaegerTracing struct {
 	SamplingServerURL string `envconfig:"TRACING_JAEGER_SAMPLING_SERVER_URL"`
 }
 
+// TargetsChecker represents ...
+type TargetsChecker struct {
+	Attempts    int           `envconfig:"ATTEMPTS"`
+	SleepPeriod time.Duration `envconfig:"SLEEP_PERIOD"`
+}
+
 func init() {
 	serviceName := "janus"
 
@@ -149,6 +156,8 @@ func init() {
 	viper.SetDefault("tracing.samplingStrategy", "probabilistic")
 	viper.SetDefault("tracing.samplingParam", 0.15)
 
+	viper.SetDefault("targetsChecker.attempts", 3)
+	viper.SetDefault("targetsChecker.sleepPeriod", 3*time.Second)
 	logging.InitDefaults(viper.GetViper(), "log")
 }
 
