@@ -64,8 +64,6 @@ func (s *Server) Stop() {
 
 // AddRoutes adds the admin routes
 func (s *Server) AddRoutes(r router.Router) {
-	// create authentication for Janus
-	guard := jwt.NewGuard(s.Credentials)
 	r.Use(
 		chiMiddleware.StripSlashes,
 		chiMiddleware.DefaultCompress,
@@ -80,8 +78,7 @@ func (s *Server) AddRoutes(r router.Router) {
 	)
 
 	s.addInternalPublicRoutes(r)
-	s.addInternalAuthRoutes(r, guard)
-	s.addInternalRoutes(r, guard)
+	s.addInternalRoutes(r)
 }
 
 func (s *Server) addInternalPublicRoutes(r router.Router) {
@@ -102,12 +99,11 @@ func (s *Server) addInternalAuthRoutes(r router.Router, guard jwt.Guard) {
 	}
 }
 
-func (s *Server) addInternalRoutes(r router.Router, guard jwt.Guard) {
+func (s *Server) addInternalRoutes(r router.Router) {
 	log.Debug("Loading API Endpoints")
 
 	// APIs endpoints
 	groupAPI := r.Group("/apis")
-	groupAPI.Use(jwt.NewMiddleware(guard).Handler)
 	{
 		groupAPI.GET("/", s.apiHandler.Get())
 		groupAPI.GET("/{name}", s.apiHandler.GetBy())
@@ -118,9 +114,6 @@ func (s *Server) addInternalRoutes(r router.Router, guard jwt.Guard) {
 
 	if s.profilingEnabled {
 		groupProfiler := r.Group("/debug/pprof")
-		if !s.profilingPublic {
-			groupProfiler.Use(jwt.NewMiddleware(guard).Handler)
-		}
 		{
 			groupProfiler.GET("/*", pprof.Index)
 			groupProfiler.GET("/cmdline", pprof.Cmdline)
