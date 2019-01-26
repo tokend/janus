@@ -1,28 +1,19 @@
-FROM golang:1.10-alpine AS builder
-
-ARG VERSION='0.0.1-docker'
+FROM golang:1.11 AS builder
 
 WORKDIR /go/src/github.com/hellofresh/janus
-
-COPY . ./
-
-RUN apk add --update bash make git
-RUN export JANUS_BUILD_ONLY_DEFAULT=1 && \
-    export VERSION=$VERSION && \
-    make
+COPY . .
+RUN GO_ENABLED=0 GOOS=linux go build -o /janus main.go
 
 # ---
 
-FROM alpine
+FROM alpine:3.8
 
-COPY --from=builder /go/src/github.com/hellofresh/janus/dist/janus /
+COPY --from=builder /janus/ .
 
-RUN apk add --no-cache ca-certificates
-RUN mkdir -p /etc/janus/apis && \
-    mkdir -p /etc/janus/auth
-
-RUN apk add --update curl && \
-    rm -rf /var/cache/apk/*
+RUN true \
+ && apk add --no-cache ca-certificates \
+ && mkdir -p /etc/janus/apis \
+ && mkdir -p /etc/janus/auth
 
 HEALTHCHECK --interval=5s --timeout=5s --retries=3 CMD curl -f http://localhost:8081/status || exit 1
 

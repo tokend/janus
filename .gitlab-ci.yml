@@ -12,11 +12,17 @@ stages:
 build:
   image: docker:latest
   stage: build
-  except:
-    - master
   tags:
     - tokend
   script:
     - docker login -u $CI_REGISTRY_USER -p $CI_BUILD_TOKEN $CI_REGISTRY
     - docker build -t $GL_IMAGE_NAME .
     - docker push $GL_IMAGE_NAME
+
+test:
+  image: golang:1.11
+  stage: test
+  tags:
+    - tokend
+  script:
+    - go test ./...
