@@ -25,5 +25,5 @@ unit tests:
   tags:
     - tokend
   script:
-    - docker build -t test .
+    - docker build -f test.dockerfile -t test .
     - docker run test ./...
