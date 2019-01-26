@@ -1,0 +1,29 @@
+services:
+  - docker:dind
+
+variables:
+  GITHUB_REF: $CI_COMMIT_SHA
+  GITLAB_IMAGE_NAME: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+
+stages:
+  - any
+
+build:
+  image: registry.gitlab.com/tokend/deployment/docker-build:latest
+  stage: any
+  tags:
+    - tokend
+  script:
+    - ci-little-helper set-pending build
+    - .ci/build.sh && STATE=0 || STATE=1
+    - ci-little-helper set-state $STATE build && exit $STATE
+
+unit tests:
+  image: registry.gitlab.com/tokend/deployment/docker-build:latest
+  stage: any
+  tags:
+    - tokend
+  script:
+    - ci-little-helper set-pending unit_test
+    - .ci/unit_test.sh && STATE=0 || STATE=1
+    - ci-little-helper set-state $STATE unit_test && exit $STATE

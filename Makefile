@@ -10,7 +10,7 @@ PKG_SRC := github.com/hellofresh/janus
 
 .PHONY: all clean deps build
 
-all: clean deps test build
+all: clean deps build
 
 deps:
 	@echo "$(OK_COLOR)==> Installing dependencies$(NO_COLOR)"
