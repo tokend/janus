@@ -20,7 +20,7 @@ build:
     - docker push $GL_IMAGE_NAME
 
 unit tests:
-  image: golang:1.11
+  image: docker:latest
   stage: test
   tags:
     - tokend
