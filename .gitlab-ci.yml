@@ -19,10 +19,11 @@ build:
     - docker build -t $GL_IMAGE_NAME .
     - docker push $GL_IMAGE_NAME
 
-test:
+unit tests:
   image: golang:1.11
   stage: test
   tags:
     - tokend
   script:
-    - go test ./...
+    - docker build -t test .
+    - docker run test ./...
