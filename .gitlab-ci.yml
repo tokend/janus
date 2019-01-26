@@ -6,13 +6,11 @@ variables:
   GITLAB_IMAGE_NAME: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
 
 stages:
-  - build
-  - test
-  - publish
+  - any
 
 build:
   image: registry.gitlab.com/tokend/deployment/docker-build:latest
-  stage: build
+  stage: any
   tags:
     - tokend
   script:
@@ -20,43 +18,12 @@ build:
     - .ci/build.sh && STATE=0 || STATE=1
     - ci-little-helper set-state $STATE build && exit $STATE
 
-#unit tests:
-#  image: docker:latest
-#  stage: test
-#  tags:
-#    - tokend
-#  script:
-#    - docker build -f test.dockerfile -t test .
-#    - docker run test ./...
-#
-#build:
-#  image: registry.gitlab.com/tokend/deployment/docker-build:latest
-#  stage: build
-#  before_script:
-#    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-#  tags:
-#    - tokend
-#  script:
-#    - ci-little-helper set-pending build
-#    - .ci/build.sh && STATE=0 || STATE=1
-#    - ci-little-helper set-state $STATE build && exit $STATE
-#
-#lint:
-#  image: registry.gitlab.com/tokend/deployment/js-build:latest
-#  stage: build
-#  tags:
-#    - tokend
-#  script:
-#    - ci-little-helper set-pending lint
-#    - .ci/lint.sh && STATE=0 || STATE=1
-#    - ci-little-helper set-state $STATE lint && exit $STATE
-#
-#unit_test:
-#  image: registry.gitlab.com/tokend/deployment/js-build:latest
-#  stage: build
-#  tags:
-#    - tokend
-#  script:
-#    - ci-little-helper set-pending unit_test
-#    - .ci/test.sh && STATE=0 || STATE=1
-#    - ci-little-helper set-state $STATE unit_test && exit $STATE
+unit tests:
+  image: registry.gitlab.com/tokend/deployment/docker-build:latest
+  stage: any
+  tags:
+    - tokend
+  script:
+    - ci-little-helper set-pending unit_test
+    - .ci/unit_test.sh && STATE=0 || STATE=1
+    - ci-little-helper set-state $STATE unit_test && exit $STATE
