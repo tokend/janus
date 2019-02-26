@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"github.com/sirupsen/logrus"
 	"time"
 
 	"github.com/DATA-DOG/godog"
@@ -32,6 +33,6 @@ func (c *apiContext) clearAPI(arg interface{}) {
 			Configuration: definition,
 		}
 	}
-
+	logrus.Debug("clear api was called. Removing all definitions")
 	time.Sleep(time.Second)
 }

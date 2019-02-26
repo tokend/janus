@@ -210,6 +210,9 @@ func (s *Server) startProvider(ctx context.Context) error {
 				if !more {
 					return
 				}
+				if c.Operation == api.RemovedOperation {
+					log.Debug(fmt.Sprintf("configuration channel send remove operation for definition. Name: %s Surname: %s", c.Configuration.Name, c.Configuration.Surname))
+				}
 
 				s.updateConfigurations(c)
 				s.handleEvent(s.currentConfigurations)
@@ -239,6 +242,9 @@ func (s *Server) listenProviders(stop chan struct{}) {
 		case configMsg, ok := <-s.configurationChan:
 			if !ok {
 				return
+			}
+			if len(configMsg.Configurations.Definitions) == 0 {
+				log.Debug("config message with empty definition array received")
 			}
 
 			if s.currentConfigurations.EqualsTo(configMsg.Configurations) {
