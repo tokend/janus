@@ -370,19 +370,10 @@ func (s *Server) refreshTargets() {
 		resp, err := doStatusRequest(url, true)
 		if err != nil || resp.StatusCode >= http.StatusInternalServerError {
 			event.Weight = 0
-			event.Attempts++
 			for _, target := range event.Targets {
 				target.Weight = 0
 			}
-
-			// if target weight were zero for too long - delete from all definitions
-			if event.Attempts >= s.globalConfig.TargetsChecker.Attempts {
-				log.Info(fmt.Sprintf("target %s removed after %d attempts", url, s.globalConfig.TargetsChecker.Attempts))
-				s.removeFromDefs(url)
-				delete(s.currentTargets.Targets, url)
-			}
-
-			log.Info(fmt.Sprintf("unhealthy target %s after %d attempts", url, event.Attempts))
+			log.Info(fmt.Sprintf("unhealthy target %s", url))
 			continue
 		}
 
@@ -392,7 +383,6 @@ func (s *Server) refreshTargets() {
 				target.Weight = 10
 			}
 			event.Weight = 10
-			event.Attempts = 0
 		}
 	}
 }
@@ -413,16 +403,6 @@ func doStatusRequest(target string, closeBody bool) (*http.Response, error) {
 	}
 
 	return resp, err
-}
-
-func (s *Server) removeFromDefs(targetURL string) {
-	for _, def := range s.currentConfigurations.Definitions {
-		for i, target := range def.Proxy.Upstreams.Targets {
-			if target.Target == targetURL {
-				def.Proxy.Upstreams.Targets = append(def.Proxy.Upstreams.Targets[:i], def.Proxy.Upstreams.Targets[i+1:]...)
-			}
-		}
-	}
 }
 
 func (s *Server) updateTargets() {
