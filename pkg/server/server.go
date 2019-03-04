@@ -362,8 +362,12 @@ type targetsEvent struct {
 }
 
 func (s *Server) refreshTargets() {
+	log.Debug("acquiring refresh targets lock")
+
 	s.currentTargets.Lock()
 	defer s.currentTargets.Unlock()
+
+	log.Debug("refresh targets lock acquired")
 
 	// check health for all targets in currentTargets and change weights if needed
 	for url, event := range s.currentTargets.Targets {
@@ -373,7 +377,10 @@ func (s *Server) refreshTargets() {
 			for _, target := range event.Targets {
 				target.Weight = 0
 			}
-			log.Info(fmt.Sprintf("unhealthy target %s", url))
+			log.WithError(err).WithFields(log.Fields{
+				"target":      url,
+				"status_code": resp.StatusCode,
+			}).Warn("unhealthy target")
 			continue
 		}
 
