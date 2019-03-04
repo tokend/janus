@@ -32,7 +32,9 @@ func (b *WeightBalancer) Elect(hosts []*Target) (*Target, error) {
 	}
 
 	if totalWeight <= 0 {
-		return nil, ErrZeroWeight
+		// if everybody is dead let's try to poke at them at least
+		idx := rand.Intn(len(hosts))
+		return hosts[idx], nil
 	}
 
 	r := rand.Intn(totalWeight)
