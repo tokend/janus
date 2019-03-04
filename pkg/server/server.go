@@ -362,31 +362,28 @@ type targetsEvent struct {
 }
 
 func (s *Server) refreshTargets() {
-	log.Debug("acquiring refresh targets lock")
-
 	s.currentTargets.Lock()
 	defer s.currentTargets.Unlock()
-
-	log.Debug("refresh targets lock acquired")
 
 	// check health for all targets in currentTargets and change weights if needed
 	for url, event := range s.currentTargets.Targets {
 		resp, err := doStatusRequest(url, true)
-		if err != nil || resp.StatusCode >= http.StatusInternalServerError {
+		if err != nil || (resp != nil && resp.StatusCode >= http.StatusInternalServerError) {
 			event.Weight = 0
 			for _, target := range event.Targets {
 				target.Weight = 0
 			}
-			log.WithError(err).WithFields(log.Fields{
-				"target":      url,
-				"status_code": resp.StatusCode,
-			}).Warn("unhealthy target")
+			log.WithError(err).WithFields(log.Fields{"target": url}).Warn("unhealthy target")
 			continue
 		}
 
 		// if target working again - refresh weights
 		if event.Weight <= 0 {
 			for _, target := range event.Targets {
+				if target == nil {
+					log.Warn("nil target") // FIXME no clue how this might happen but it did
+					continue
+				}
 				target.Weight = 10
 			}
 			event.Weight = 10
